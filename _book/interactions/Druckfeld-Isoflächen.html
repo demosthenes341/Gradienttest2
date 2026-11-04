@@ -1,0 +1,747 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Druckfeld-Isoflächen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 3D-Bühne links, Messpult rechts; unter 820px untereinander. Technisches Messgerät, kühle Neutrale, ein warmer Akzent für den Gradienten. */
+:root {
+  --bg: #e9edf1;
+  --stage: #f3f6f8;
+  --panel: #fbfcfd;
+  --fg: #17202a;
+  --muted: #566373;
+  --line: #cfd6de;
+  --accent: #0b6e99;
+  --surf-lo: #5fb0b4;
+  --surf-hi: #2f5f9e;
+  --arrow: #d4440c;
+  --grid: #bcc6d0;
+  --box: #8794a3;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151b;
+    --stage: #121a21;
+    --panel: #172029;
+    --fg: #e6edf3;
+    --muted: #93a1b0;
+    --line: #2b3743;
+    --accent: #5ec2e8;
+    --surf-lo: #3f8f97;
+    --surf-hi: #6fa0e0;
+    --arrow: #ff8a4c;
+    --grid: #2a3641;
+    --box: #4a5a69;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151b;
+  --stage: #121a21;
+  --panel: #172029;
+  --fg: #e6edf3;
+  --muted: #93a1b0;
+  --line: #2b3743;
+  --accent: #5ec2e8;
+  --surf-lo: #3f8f97;
+  --surf-hi: #6fa0e0;
+  --arrow: #ff8a4c;
+  --grid: #2a3641;
+  --box: #4a5a69;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+@media (min-width: 821px) { html, body { height: 100%; } }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--font-body);
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 352px;
+  height: 100%;
+}
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--stage);
+  overflow: hidden;
+}
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+.axl {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: 500 12px var(--font-mono);
+  color: var(--muted);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.hint, .legend {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  max-width: calc(100% - 32px);
+  font-size: 12.5px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.hint { top: 14px; }
+.legend { bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.legend .sw { flex: none; width: 22px; height: 3px; border-radius: 2px; background: var(--arrow); }
+.nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+.panel {
+  min-width: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  padding-block: 22px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 600; text-wrap: balance; }
+h2 { margin: 0 0 10px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.meta { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.rowhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.rowhead label { font-weight: 500; }
+.rowhead output { font: 500 15px var(--font-mono); font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; height: 28px; margin: 0; accent-color: var(--accent); }
+.rangeends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+button {
+  font: 500 13px var(--font-body);
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+
+.checks { display: flex; flex-direction: column; gap: 8px; }
+.checks label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.checks input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+.readout { width: 100%; border-collapse: collapse; }
+.readout th { text-align: left; font-weight: 400; color: var(--muted); padding: 4px 12px 4px 0; white-space: nowrap; }
+.readout td { text-align: right; padding: 4px 0; font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; }
+.readout .unit { color: var(--muted); font-weight: 400; margin-left: 5px; display: inline-block; min-width: 4.2em; text-align: left; }
+.readout tbody + tbody tr:first-child > * { border-top: 1px solid var(--line); padding-top: 9px; }
+.readout tbody + tbody tr:last-child > * { padding-bottom: 4px; }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .stage { height: min(64vh, 560px); min-height: 340px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="gl" role="img" aria-label="3D-Ansicht der Isofläche des Druckfelds mit Gradientenpfeil"></canvas>
+    <span class="axl" id="axx">x</span>
+    <span class="axl" id="axy">y</span>
+    <span class="axl" id="axz">z (Höhe)</span>
+    <div class="hint">Klick auf die Fläche setzt den Messpunkt. Ziehen dreht, Mausrad zoomt.</div>
+    <div class="legend"><span class="sw"></span><span id="legendText"></span></div>
+    <p class="nogl" id="nogl" hidden>Die 3D-Ansicht braucht WebGL. Dieser Browser stellt es nicht bereit.</p>
+  </div>
+
+  <aside class="panel" aria-label="Einstellungen und Messwerte">
+    <header>
+      <h1>Isofläche und Gradient</h1>
+      <p class="meta">Skalares Druckfeld p(x, y, z) in einem Würfel von 10 × 10 × 10 km.</p>
+    </header>
+
+    <section>
+      <div class="rowhead">
+        <label for="iso">Isowert p₀</label>
+        <output id="isoOut" for="iso">–</output>
+      </div>
+      <input type="range" id="iso" min="990" max="1040" step="0.1" value="1021">
+      <div class="rangeends mono"><span id="isoMin">–</span><span id="isoMax">–</span></div>
+      <p class="meta" id="meshInfo"></p>
+    </section>
+
+    <section>
+      <h2>Druckfeld</h2>
+      <p class="meta" id="fieldInfo" style="margin:0 0 10px"></p>
+      <button id="reroll" type="button">Neues Feld würfeln</button>
+    </section>
+
+    <section>
+      <h2>Anzeige</h2>
+      <div class="checks">
+        <label for="cArrow"><input type="checkbox" id="cArrow" checked> Gradient ∇p als Pfeil</label>
+        <label for="cForce"><input type="checkbox" id="cForce"> Gegenrichtung −∇p (Druckgradientkraft)</label>
+        <label for="cPlane"><input type="checkbox" id="cPlane" checked> Tangentialebene</label>
+        <label for="cAlpha"><input type="checkbox" id="cAlpha" checked> Fläche durchscheinend</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Messpunkt</h2>
+      <table class="readout">
+        <tbody>
+          <tr><th scope="row">x</th><td><span id="rx">–</span><span class="unit">km</span></td></tr>
+          <tr><th scope="row">y</th><td><span id="ry">–</span><span class="unit">km</span></td></tr>
+          <tr><th scope="row">z (Höhe)</th><td><span id="rz">–</span><span class="unit">km</span></td></tr>
+        </tbody>
+        <tbody>
+          <tr><th scope="row">p</th><td><span id="rp">–</span><span class="unit">hPa</span></td></tr>
+        </tbody>
+        <tbody>
+          <tr><th scope="row">∂p/∂x</th><td><span id="rgx">–</span><span class="unit">hPa/km</span></td></tr>
+          <tr><th scope="row">∂p/∂y</th><td><span id="rgy">–</span><span class="unit">hPa/km</span></td></tr>
+          <tr><th scope="row">∂p/∂z</th><td><span id="rgz">–</span><span class="unit">hPa/km</span></td></tr>
+          <tr><th scope="row">|∇p|</th><td><span id="rgm">–</span><span class="unit">hPa/km</span></td></tr>
+        </tbody>
+        <tbody>
+          <tr><th scope="row">Neigung gegen die Horizontale</th><td><span id="rtilt">–</span><span class="unit">°</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  if (typeof THREE === 'undefined') { $('nogl').hidden = false; return; }
+
+  // ---------- Konstanten ----------
+  var L = 5;              // Halbkante des Gebiets in km
+  var N = 40;             // Zellen je Achse
+  var H = 2 * L / N;      // Zellgröße in km
+  var S = N + 1;          // Stützstellen je Achse
+  var P0 = 1013;          // Grundniveau in hPa
+  var TILT = 0.6;         // schwache vertikale Abnahme in hPa/km
+
+  var root = getComputedStyle(document.documentElement);
+  function tok(n) { return root.getPropertyValue(n).trim(); }
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function fmt(v, d) {
+    if (Math.abs(v) < 0.5 * Math.pow(10, -d)) v = 0;
+    return v.toFixed(d).replace('.', ',').replace('-', '−');
+  }
+
+  // ---------- Renderer, Kamera, Licht ----------
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, alpha: true });
+  } catch (err) { $('nogl').hidden = false; return; }
+  renderer.setClearColor(0x000000, 0);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  var scene = new THREE.Scene();
+  var cam = new THREE.PerspectiveCamera(38, 1, 0.5, 300);
+  cam.up.set(0, 0, 1);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+  var key = new THREE.DirectionalLight(0xffffff, 0.75); key.position.set(6, -8, 12); scene.add(key);
+  var fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(-8, 6, -4); scene.add(fill);
+
+  var az = -0.9, pol = 1.05, dist = 27, userZoom = false, vw = 1, vh = 1;
+  function placeCam() {
+    var sp = Math.sin(pol);
+    cam.position.set(dist * sp * Math.cos(az), dist * sp * Math.sin(az), dist * Math.cos(pol));
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld(true);
+  }
+
+  var dirty = true;
+  function invalidate() { dirty = true; }
+
+  // ---------- Druckfeld ----------
+  function mulberry(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function makeSources(sd) {
+    var r = mulberry(sd * 7919 + 13);
+    function u(a, b) { return a + (b - a) * r(); }
+    function mk(A, sMin, sMax, R) {
+      var s = u(sMin, sMax);
+      return { A: A, k: 1 / (2 * s * s), x: u(-R, R), y: u(-R, R), z: u(-R, R) };
+    }
+    var out = [mk(u(18, 30), 1.3, 2.0, 2.5), mk(-u(15, 28), 1.3, 2.0, 2.5)];
+    for (var i = 0; i < 2; i++) out.push(mk((r() < 0.5 ? -1 : 1) * u(8, 20), 1.0, 1.8, 3.5));
+    return out;
+  }
+
+  var sources = [], seed = 7, F = new Float32Array(S * S * S), fmin = 0, fmax = 0, gmax = 1;
+
+  function field(x, y, z) {
+    var p = P0 - TILT * z;
+    for (var s = 0; s < sources.length; s++) {
+      var q = sources[s], dx = x - q.x, dy = y - q.y, dz = z - q.z;
+      p += q.A * Math.exp(-(dx * dx + dy * dy + dz * dz) * q.k);
+    }
+    return p;
+  }
+  function grad(x, y, z, o) {
+    var gx = 0, gy = 0, gz = -TILT;
+    for (var s = 0; s < sources.length; s++) {
+      var q = sources[s], dx = x - q.x, dy = y - q.y, dz = z - q.z;
+      var e = q.A * Math.exp(-(dx * dx + dy * dy + dz * dz) * q.k) * (-2 * q.k);
+      gx += e * dx; gy += e * dy; gz += e * dz;
+    }
+    o[0] = gx; o[1] = gy; o[2] = gz;
+  }
+  function unit(g) {
+    var m = Math.sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+    if (m < 1e-9) { g[0] = 0; g[1] = 0; g[2] = 1; } else { g[0] /= m; g[1] /= m; g[2] /= m; }
+  }
+
+  var iso = 1021;
+  var isoEl = $('iso');
+
+  function buildField(sd) {
+    seed = sd;
+    sources = makeSources(sd);
+    fmin = Infinity; fmax = -Infinity; gmax = 1e-6;
+    var g = [0, 0, 0];
+    for (var k = 0; k < S; k++) for (var j = 0; j < S; j++) for (var i = 0; i < S; i++) {
+      var x = -L + i * H, y = -L + j * H, z = -L + k * H;
+      var v = field(x, y, z);
+      F[(k * S + j) * S + i] = v;
+      if (v < fmin) fmin = v;
+      if (v > fmax) fmax = v;
+      grad(x, y, z, g);
+      var m = Math.sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+      if (m > gmax) gmax = m;
+    }
+    var range = fmax - fmin;
+    var lo = Math.ceil((fmin + 0.04 * range) * 10) / 10;
+    var hi = Math.floor((fmax - 0.04 * range) * 10) / 10;
+    isoEl.min = lo; isoEl.max = hi;
+    iso = clamp(P0 + 8, lo, hi);
+    isoEl.value = iso;
+    $('isoMin').textContent = fmt(lo, 1) + ' hPa';
+    $('isoMax').textContent = fmt(hi, 1) + ' hPa';
+    var highs = 0, lows = 0;
+    sources.forEach(function (q) { if (q.A > 0) highs++; else lows++; });
+    $('fieldInfo').textContent = 'Feld Nr. ' + sd + ': ' + highs + (highs === 1 ? ' Hoch' : ' Hochs') + ', ' + lows + (lows === 1 ? ' Tief' : ' Tiefs') + ' um ' + P0 + ' hPa.';
+  }
+
+  // ---------- Isofläche per Marching Tetrahedra ----------
+  var CO = [[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
+  var TETS = [[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
+  var cv = new Float64Array(8), cx = new Float64Array(8), cy = new Float64Array(8), cz = new Float64Array(8);
+  var colLo = new THREE.Color(), colHi = new THREE.Color();
+
+  function extract(level) {
+    var pos = [], nor = [], col = [];
+    var A = [0,0,0], B = [0,0,0], C = [0,0,0], D = [0,0,0];
+    var nA = [0,0,0], nB = [0,0,0], nC = [0,0,0];
+
+    function vert(a, b, out) {
+      var t = (level - cv[a]) / (cv[b] - cv[a]);
+      out[0] = cx[a] + t * (cx[b] - cx[a]);
+      out[1] = cy[a] + t * (cy[b] - cy[a]);
+      out[2] = cz[a] + t * (cz[b] - cz[a]);
+    }
+    function put(p, n) {
+      pos.push(p[0], p[1], p[2]);
+      nor.push(n[0], n[1], n[2]);
+      var t = (p[2] + L) / (2 * L);
+      col.push(colLo.r + (colHi.r - colLo.r) * t, colLo.g + (colHi.g - colLo.g) * t, colLo.b + (colHi.b - colLo.b) * t);
+    }
+    function emit(p, q, r) {
+      grad(p[0], p[1], p[2], nA); unit(nA);
+      grad(q[0], q[1], q[2], nB); unit(nB);
+      grad(r[0], r[1], r[2], nC); unit(nC);
+      var ux = q[0] - p[0], uy = q[1] - p[1], uz = q[2] - p[2];
+      var wx = r[0] - p[0], wy = r[1] - p[1], wz = r[2] - p[2];
+      var gx = uy * wz - uz * wy, gy = uz * wx - ux * wz, gz = ux * wy - uy * wx;
+      var d = gx * (nA[0] + nB[0] + nC[0]) + gy * (nA[1] + nB[1] + nC[1]) + gz * (nA[2] + nB[2] + nC[2]);
+      if (d < 0) { put(p, nA); put(r, nC); put(q, nB); }
+      else { put(p, nA); put(q, nB); put(r, nC); }
+    }
+
+    for (var k = 0; k < N; k++) for (var j = 0; j < N; j++) for (var i = 0; i < N; i++) {
+      var mn = Infinity, mx = -Infinity, c;
+      for (c = 0; c < 8; c++) {
+        var o = CO[c];
+        var v = F[((k + o[2]) * S + (j + o[1])) * S + (i + o[0])];
+        cv[c] = v;
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+      if (mx < level || mn >= level) continue;
+      for (c = 0; c < 8; c++) {
+        var oo = CO[c];
+        cx[c] = -L + (i + oo[0]) * H; cy[c] = -L + (j + oo[1]) * H; cz[c] = -L + (k + oo[2]) * H;
+      }
+      for (var t = 0; t < 6; t++) {
+        var T = TETS[t], ins = [], outs = [];
+        for (var q = 0; q < 4; q++) { if (cv[T[q]] >= level) ins.push(T[q]); else outs.push(T[q]); }
+        if (ins.length === 0 || ins.length === 4) continue;
+        if (ins.length === 1) {
+          vert(ins[0], outs[0], A); vert(ins[0], outs[1], B); vert(ins[0], outs[2], C);
+          emit(A, B, C);
+        } else if (ins.length === 3) {
+          vert(outs[0], ins[0], A); vert(outs[0], ins[1], B); vert(outs[0], ins[2], C);
+          emit(A, B, C);
+        } else {
+          vert(ins[0], outs[0], A); vert(ins[0], outs[1], B); vert(ins[1], outs[1], C); vert(ins[1], outs[0], D);
+          emit(A, B, C); emit(A, C, D);
+        }
+      }
+    }
+    return { pos: pos, nor: nor, col: col };
+  }
+
+  // ---------- Szene: Gebiet, Fläche, Messpunkt ----------
+  var staticGroup = new THREE.Group(); scene.add(staticGroup);
+  function buildStatic() {
+    staticGroup.children.slice().forEach(function (o) {
+      staticGroup.remove(o);
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+    var boxGeo = new THREE.BoxGeometry(2 * L, 2 * L, 2 * L);
+    staticGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), new THREE.LineBasicMaterial({ color: tok('--box') })));
+    boxGeo.dispose();
+    var grid = new THREE.GridHelper(2 * L, 10, tok('--grid'), tok('--grid'));
+    grid.rotation.x = Math.PI / 2; grid.position.z = -L;
+    staticGroup.add(grid);
+  }
+
+  var surfMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide, transparent: true, opacity: 0.8, depthWrite: false });
+  var mesh = new THREE.Mesh(new THREE.BufferGeometry(), surfMat);
+  scene.add(mesh);
+
+  var selGroup = new THREE.Group(); scene.add(selGroup);
+  var markerMat = new THREE.MeshBasicMaterial({ color: 0x17202a });
+  var marker = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 14), markerMat);
+  var arrowMat = new THREE.MeshStandardMaterial({ color: 0xd4440c, roughness: 0.45 });
+  var arrow = new THREE.Group();
+  var shaftGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 14); shaftGeo.translate(0, 0.5, 0);
+  var headGeo = new THREE.ConeGeometry(0.17, 1, 18); headGeo.translate(0, 0.5, 0);
+  var shaft = new THREE.Mesh(shaftGeo, arrowMat), head = new THREE.Mesh(headGeo, arrowMat);
+  arrow.add(shaft, head);
+  var planeMat = new THREE.MeshBasicMaterial({ color: 0xd4440c, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false });
+  var ringMat = new THREE.LineBasicMaterial({ color: 0xd4440c });
+  var ringPts = [];
+  for (var a = 0; a < 64; a++) ringPts.push(new THREE.Vector3(Math.cos(a / 64 * 2 * Math.PI) * 1.25, Math.sin(a / 64 * 2 * Math.PI) * 1.25, 0));
+  var planeGroup = new THREE.Group();
+  planeGroup.add(new THREE.Mesh(new THREE.CircleGeometry(1.25, 56), planeMat));
+  planeGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPts), ringMat));
+  selGroup.add(marker, arrow, planeGroup);
+  selGroup.visible = false;
+
+  var hoverMat = new THREE.MeshBasicMaterial({ color: 0xd4440c, transparent: true, opacity: 0.55, depthTest: false });
+  var hover = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), hoverMat);
+  hover.visible = false; hover.renderOrder = 5; scene.add(hover);
+
+  function applyColors() {
+    colLo.set(tok('--surf-lo')); colHi.set(tok('--surf-hi'));
+    arrowMat.color.set(tok('--arrow'));
+    planeMat.color.set(tok('--arrow'));
+    ringMat.color.set(tok('--arrow'));
+    hoverMat.color.set(tok('--arrow'));
+    markerMat.color.set(tok('--fg'));
+    buildStatic();
+  }
+
+  // ---------- Zustand: Messpunkt ----------
+  var sel = null, triCount = 0;
+  var showArrow = true, forceDir = false, showPlane = true;
+  var raycaster = new THREE.Raycaster();
+  var gtmp = [0, 0, 0];
+  var vUp = new THREE.Vector3(0, 1, 0), vZ = new THREE.Vector3(0, 0, 1);
+  var nvec = new THREE.Vector3(), dvec = new THREE.Vector3();
+
+  // Newton-Schritte entlang des Gradienten setzen den Punkt auf p = iso
+  function project(v) {
+    var g = [0, 0, 0];
+    for (var it = 0; it < 10; it++) {
+      var p = field(v.x, v.y, v.z);
+      grad(v.x, v.y, v.z, g);
+      var gg = g[0] * g[0] + g[1] * g[1] + g[2] * g[2];
+      if (gg < 1e-10) break;
+      var step = (iso - p) / gg, len = Math.abs(step) * Math.sqrt(gg);
+      if (len > 0.8) step *= 0.8 / len;
+      v.x += step * g[0]; v.y += step * g[1]; v.z += step * g[2];
+      if (len < 1e-4) break;
+    }
+    v.clampScalar(-L, L);
+    return Math.abs(field(v.x, v.y, v.z) - iso);
+  }
+
+  function hit(ndc) {
+    if (!triCount) return null;
+    raycaster.setFromCamera(ndc, cam);
+    var h = raycaster.intersectObject(mesh, false);
+    return h.length ? h[0].point.clone() : null;
+  }
+
+  function autoPick() {
+    sel = null;
+    if (!triCount) return;
+    placeCam();
+    var pt = hit(new THREE.Vector2(0, 0));
+    if (!pt) {
+      var arr = mesh.geometry.attributes.position.array;
+      var n = Math.floor(triCount / 2) * 9;
+      pt = new THREE.Vector3(arr[n], arr[n + 1], arr[n + 2]);
+    }
+    project(pt);
+    sel = pt;
+  }
+
+  function updateLegend() {
+    $('legendText').textContent = forceDir
+      ? '−∇p: Richtung der Druckgradientkraft, zum tieferen Druck'
+      : '∇p: zeigt zum höheren Druck, senkrecht zur Fläche';
+  }
+
+  var rIds = ['rx', 'ry', 'rz', 'rp', 'rgx', 'rgy', 'rgz', 'rgm', 'rtilt'];
+  function updateSel() {
+    if (!sel) {
+      selGroup.visible = false;
+      rIds.forEach(function (id) { $(id).textContent = '–'; });
+      invalidate();
+      return;
+    }
+    selGroup.visible = true;
+    grad(sel.x, sel.y, sel.z, gtmp);
+    var gm = Math.sqrt(gtmp[0] * gtmp[0] + gtmp[1] * gtmp[1] + gtmp[2] * gtmp[2]) || 1e-9;
+    nvec.set(gtmp[0] / gm, gtmp[1] / gm, gtmp[2] / gm);
+    dvec.copy(nvec).multiplyScalar(forceDir ? -1 : 1);
+
+    marker.position.copy(sel);
+    var headL = 0.42, total = 0.9 + 1.5 * clamp(gm / gmax, 0, 1), shaftL = total - headL;
+    arrow.position.copy(sel);
+    arrow.quaternion.setFromUnitVectors(vUp, dvec);
+    shaft.scale.set(1, shaftL, 1);
+    head.scale.set(1, headL, 1);
+    head.position.y = shaftL;
+    arrow.visible = showArrow;
+    planeGroup.position.copy(sel);
+    planeGroup.quaternion.setFromUnitVectors(vZ, nvec);
+    planeGroup.visible = showPlane;
+
+    $('rx').textContent = fmt(sel.x, 2);
+    $('ry').textContent = fmt(sel.y, 2);
+    $('rz').textContent = fmt(sel.z, 2);
+    $('rp').textContent = fmt(field(sel.x, sel.y, sel.z), 2);
+    $('rgx').textContent = fmt(gtmp[0], 2);
+    $('rgy').textContent = fmt(gtmp[1], 2);
+    $('rgz').textContent = fmt(gtmp[2], 2);
+    $('rgm').textContent = fmt(gm, 2);
+    $('rtilt').textContent = fmt(Math.acos(Math.min(1, Math.abs(gtmp[2]) / gm)) * 180 / Math.PI, 1);
+    invalidate();
+  }
+
+  function ensureSel() {
+    if (sel) {
+      var err = project(sel);
+      if (err > 0.08) autoPick();
+    } else {
+      autoPick();
+    }
+  }
+
+  function rebuild() {
+    var r = extract(iso);
+    var geo = new THREE.BufferGeometry();
+    triCount = r.pos.length / 9;
+    if (triCount) {
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(r.pos), 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(r.nor), 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(r.col), 3));
+      geo.computeBoundingSphere();
+      geo.computeBoundingBox();
+    }
+    mesh.geometry.dispose();
+    mesh.geometry = geo;
+    mesh.visible = triCount > 0;
+    $('isoOut').textContent = fmt(iso, 1) + ' hPa';
+    $('meshInfo').textContent = triCount
+      ? triCount.toLocaleString('de-DE') + ' Dreiecke auf der Fläche p = p₀.'
+      : 'Bei diesem Wert liegt keine Fläche im Gebiet.';
+    ensureSel();
+    updateSel();
+    invalidate();
+  }
+
+  // ---------- Beschriftung der Achsen ----------
+  var labels = [
+    { el: $('axx'), p: new THREE.Vector3(L + 0.9, -L, -L) },
+    { el: $('axy'), p: new THREE.Vector3(-L, L + 0.9, -L) },
+    { el: $('axz'), p: new THREE.Vector3(-L, -L, L + 0.9) }
+  ];
+  var lv = new THREE.Vector3();
+  function updateLabels() {
+    labels.forEach(function (l) {
+      lv.copy(l.p).project(cam);
+      if (lv.z > 1) { l.el.style.visibility = 'hidden'; return; }
+      l.el.style.visibility = 'visible';
+      l.el.style.transform = 'translate(' + ((lv.x * 0.5 + 0.5) * vw) + 'px,' + ((-lv.y * 0.5 + 0.5) * vh) + 'px) translate(-50%,-50%)';
+    });
+  }
+
+  // ---------- Steuerung per Maus und Touch ----------
+  var canvas = $('gl'), stage = $('stage');
+  var ptrs = new Map(), down = null, pinchD = 0;
+
+  function ndcFrom(e) {
+    var r = canvas.getBoundingClientRect();
+    return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  }
+  function pinchDist() {
+    var p = Array.from(ptrs.values());
+    return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  }
+
+  canvas.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    canvas.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    hover.visible = false;
+    if (ptrs.size === 1) down = { x: e.clientX, y: e.clientY, moved: false };
+    else { down = null; pinchD = pinchDist(); }
+  });
+
+  var hoverPending = false, lastMove = null;
+  canvas.addEventListener('pointermove', function (e) {
+    var p = ptrs.get(e.pointerId);
+    if (p) {
+      var dx = e.clientX - p.x, dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      if (ptrs.size === 1) {
+        if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) down.moved = true;
+        az -= dx * 0.006;
+        pol = clamp(pol - dy * 0.006, 0.12, Math.PI - 0.12);
+        placeCam(); invalidate();
+      } else if (ptrs.size === 2) {
+        var d = pinchDist();
+        if (pinchD > 0 && d > 0) { dist = clamp(dist * pinchD / d, 12, 60); userZoom = true; placeCam(); invalidate(); }
+        pinchD = d;
+      }
+    } else if (e.pointerType === 'mouse' && ptrs.size === 0) {
+      lastMove = e;
+      if (!hoverPending) {
+        hoverPending = true;
+        requestAnimationFrame(function () {
+          hoverPending = false;
+          var pt = lastMove ? hit(ndcFrom(lastMove)) : null;
+          if (pt) { hover.position.copy(pt); hover.visible = true; } else hover.visible = false;
+          invalidate();
+        });
+      }
+    }
+  });
+
+  function endPtr(e, allowPick) {
+    var wasSingle = ptrs.size === 1;
+    ptrs.delete(e.pointerId);
+    if (allowPick && wasSingle && down && !down.moved) {
+      var pt = hit(ndcFrom(e));
+      if (pt) { project(pt); sel = pt; updateSel(); }
+    }
+    if (ptrs.size === 0) down = null;
+    if (ptrs.size < 2) pinchD = 0;
+  }
+  canvas.addEventListener('pointerup', function (e) { endPtr(e, true); });
+  canvas.addEventListener('pointercancel', function (e) { endPtr(e, false); });
+  canvas.addEventListener('pointerleave', function () { if (hover.visible) { hover.visible = false; invalidate(); } });
+  canvas.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    dist = clamp(dist * Math.exp(e.deltaY * 0.001), 12, 60);
+    userZoom = true; placeCam(); invalidate();
+  }, { passive: false });
+
+  // ---------- Bedienelemente ----------
+  var rafPending = false;
+  isoEl.addEventListener('input', function () {
+    iso = parseFloat(isoEl.value);
+    $('isoOut').textContent = fmt(iso, 1) + ' hPa';
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(function () { rafPending = false; rebuild(); });
+    }
+  });
+  $('reroll').addEventListener('click', function () {
+    sel = null;
+    buildField(10 + Math.floor(Math.random() * 9000));
+    rebuild();
+  });
+  $('cArrow').addEventListener('change', function (e) { showArrow = e.target.checked; updateSel(); });
+  $('cForce').addEventListener('change', function (e) { forceDir = e.target.checked; updateLegend(); updateSel(); });
+  $('cPlane').addEventListener('change', function (e) { showPlane = e.target.checked; updateSel(); });
+  $('cAlpha').addEventListener('change', function (e) {
+    surfMat.transparent = e.target.checked;
+    surfMat.opacity = e.target.checked ? 0.8 : 1;
+    surfMat.depthWrite = !e.target.checked;
+    surfMat.needsUpdate = true;
+    invalidate();
+  });
+
+  // ---------- Größe, Design-Wechsel, Start ----------
+  function resize() {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    vw = w; vh = h;
+    renderer.setSize(w, h, false);
+    cam.aspect = w / h;
+    cam.updateProjectionMatrix();
+    if (!userZoom) dist = clamp(27 / Math.min(1, cam.aspect * 1.05), 14, 60);
+    placeCam(); invalidate();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+  window.addEventListener('resize', resize);
+
+  function onTheme() { applyColors(); rebuild(); }
+  new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  if (mq.addEventListener) mq.addEventListener('change', onTheme);
+
+  function frame() {
+    requestAnimationFrame(frame);
+    if (!dirty) return;
+    dirty = false;
+    renderer.render(scene, cam);
+    updateLabels();
+  }
+
+  applyColors();
+  buildField(seed);
+  updateLegend();
+  resize();
+  rebuild();
+  frame();
+})();
+</script>
+
+</body></html>

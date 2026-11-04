@@ -1,0 +1,42 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Mathematische Bildung",
+    "section": "",
+    "text": "Preface\nThis is a Quarto book.\nTo learn more about Quarto books visit https://quarto.org/docs/books.\n\n1 + 1\n\n[1] 2",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "intro.html",
+    "href": "intro.html",
+    "title": "1  Wissenschaftliche Einstellung",
+    "section": "",
+    "text": "Wissenschaftliche Einstellung heißt, Aussagen nicht zu glauben, sondern zu prüfen — und sich selbst genauso zu prüfen wie andere. Drei Haltungen gehören dazu: Skepsis, intellektuelle Demut, Bereitschaft zur Korrektur. Krieg dem Krieg! Quelle: Bartnik & Palmer (2024).\n\n2 Gradientenanimation:\nHier können Sie ein wenig mit den Gradienten herumspielen:",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Wissenschaftliche Einstellung</span>"
+    ]
+  },
+  {
+    "objectID": "parts/mein-thema.html",
+    "href": "parts/mein-thema.html",
+    "title": "2  mein-thema",
+    "section": "",
+    "text": "Dies ist mein Lieblingsthema: Menschenrechte verteidigen!",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>mein-thema</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html",
+    "href": "summary.html",
+    "title": "3  Summary",
+    "section": "",
+    "text": "In summary, this book has no content whatsoever.\n\n1 + 1\n\n[1] 2",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Summary</span>"
+    ]
+  }
+]
